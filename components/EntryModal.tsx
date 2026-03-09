@@ -129,9 +129,9 @@ const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave, onDele
               products: processedProducts
             }));
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Receipt Scan Error:", error);
-          alert("영수증을 인식하는 데 실패했습니다. 다시 시도해주세요.");
+          alert(error.message || "영수증을 인식하는 데 실패했습니다. 다시 시도해주세요.");
         } finally {
           setIsScanning(false);
         }

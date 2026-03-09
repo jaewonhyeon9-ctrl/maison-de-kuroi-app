@@ -359,9 +359,9 @@ const App: React.FC = () => {
     try {
       const result = await analyzeFinancials(entries);
       setAiAnalysis(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Analysis failed:', error);
-      alert('AI 분석 중 오류가 발생했습니다.');
+      alert(error.message || 'AI 분석 중 오류가 발생했습니다.');
     } finally {
       setIsAnalyzing(false);
     }

@@ -2,7 +2,18 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { PLEntry } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiClient) {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("API 키를 설정해주세요 (VITE_GEMINI_API_KEY).");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+};
 
 // Using gemini-3.1-pro-preview for complex financial reasoning tasks
 export const analyzeFinancials = async (entries: PLEntry[]) => {
@@ -26,6 +37,7 @@ export const analyzeFinancials = async (entries: PLEntry[]) => {
   `;
 
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3.1-pro-preview",
       contents: prompt,
@@ -74,6 +86,7 @@ export const analyzeReceipt = async (base64Image: string, mimeType: string) => {
   `;
 
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
