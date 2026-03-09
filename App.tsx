@@ -255,16 +255,15 @@ const App: React.FC = () => {
     return { totalExp, vendors: sortedVendors };
   }, [entries, periodTab, vendorList, todayStr, thisMonthStr]);
 
-  // 1. 로그인 시 사용자 데이터 로드 로직 강화 (서버 연동)
+  // 1. 로그인 시 사용자 데이터 로드 로직 강화 (로컬 스토리지 연동)
   useEffect(() => {
     if (currentUser) {
       const loadData = async () => {
         try {
-          const response = await fetch(`/api/data/${currentUser.userId}`);
-          const result = await response.json();
-          
-          if (result.success && result.data) {
-            const parsed = result.data;
+          const storedData = localStorage.getItem(`app_data_${currentUser.userId}`);
+          let parsed;
+          if (storedData) {
+            parsed = JSON.parse(storedData);
             setEntries(parsed.entries || []);
             let loadedStaff = parsed.staffList || INITIAL_STAFF;
             loadedStaff = loadedStaff.map((s: Staff) => {
@@ -314,7 +313,7 @@ const App: React.FC = () => {
             setTasks(INITIAL_TASKS);
           }
         } catch (e) {
-          console.error('Failed to load data from server:', e);
+          console.error('Failed to load data from localStorage:', e);
           alert('데이터를 불러오는 중 오류가 발생했습니다.');
         } finally {
           setIsDataLoaded(true);
@@ -326,21 +325,15 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  // 2. 데이터 변경 시 자동 저장 (서버 연동)
+  // 2. 데이터 변경 시 자동 저장 (로컬 스토리지 연동)
   useEffect(() => {
     if (currentUser && isDataLoaded) {
-      const saveData = async () => {
+      const saveData = () => {
         try {
           const dataToSave = { entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings };
-          await fetch(`/api/data/${currentUser.userId}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dataToSave),
-          });
+          localStorage.setItem(`app_data_${currentUser.userId}`, JSON.stringify(dataToSave));
         } catch (e) {
-          console.error('Failed to save data to server:', e);
+          console.error('Failed to save data to localStorage:', e);
         }
       };
       
@@ -371,9 +364,8 @@ const App: React.FC = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch('/api/users');
-      const result = await response.json();
-      const currentUsers = result.success && result.data ? result.data : [];
+      const storedUsers = localStorage.getItem('app_users');
+      const currentUsers = storedUsers ? JSON.parse(storedUsers) : [];
       setUsers(currentUsers);
 
       if (isLoginMode) {
@@ -433,11 +425,7 @@ const App: React.FC = () => {
         
         const updatedUsers = [...currentUsers, newUser];
         
-        await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedUsers)
-        });
+        localStorage.setItem('app_users', JSON.stringify(updatedUsers));
         
         alert('회원가입이 완료되었습니다. 로그인해주세요!');
         setIsLoginMode(true);
@@ -1731,11 +1719,7 @@ const App: React.FC = () => {
               }
               
               setUsers(updatedUsers);
-              await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedUsers)
-              });
+              localStorage.setItem('app_users', JSON.stringify(updatedUsers));
               
               (e.target as HTMLFormElement).reset(); 
             }} className="space-y-4 mb-10">
@@ -1784,11 +1768,7 @@ const App: React.FC = () => {
                       if (window.confirm('정말 삭제하시겠습니까?')) {
                         const updatedUsers = users.filter(user => user.id !== u.id);
                         setUsers(updatedUsers);
-                        await fetch('/api/users', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(updatedUsers)
-                        });
+                        localStorage.setItem('app_users', JSON.stringify(updatedUsers));
                       }
                     }} className="text-rose-400 text-[10px] font-black uppercase">삭제</button>
                   </div>
