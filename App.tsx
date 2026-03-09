@@ -402,6 +402,13 @@ const App: React.FC = () => {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate userId to ensure it only contains alphanumeric characters
+    const validUserIdRegex = /^[a-zA-Z0-9_.-]+$/;
+    if (!validUserIdRegex.test(authForm.userId)) {
+      alert('아이디는 영문, 숫자, 기호(_ . -)만 사용할 수 있습니다. (한글/공백 불가)');
+      return;
+    }
+
     try {
       const email = `${authForm.userId}@smartpl.app`;
 
@@ -455,7 +462,13 @@ const App: React.FC = () => {
           }
         } catch (error: any) {
           console.error('Login error:', error);
-          alert('아이디 또는 비밀번호가 일치하지 않습니다.');
+          if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            alert('아이디 또는 비밀번호가 일치하지 않습니다.');
+          } else if (error.code === 'auth/api-key-not-valid') {
+            alert('Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.');
+          } else {
+            alert(`로그인 오류: ${error.message}`);
+          }
         }
       } else {
         try {
@@ -492,6 +505,10 @@ const App: React.FC = () => {
             alert('이미 존재하는 아이디입니다.');
           } else if (error.code === 'auth/weak-password') {
             alert('비밀번호는 6자리 이상이어야 합니다.');
+          } else if (error.code === 'auth/operation-not-allowed') {
+            alert('Firebase 설정 오류: 콘솔에서 [Authentication] -> [Sign-in method] 탭으로 이동하여 "이메일/비밀번호" 로그인을 활성화해주세요!');
+          } else if (error.code === 'auth/api-key-not-valid') {
+            alert('Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.');
           } else {
             alert(`회원가입 중 오류가 발생했습니다: ${error.message}`);
           }
