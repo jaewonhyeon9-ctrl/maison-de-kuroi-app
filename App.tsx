@@ -161,6 +161,8 @@ const App: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authForm, setAuthForm] = useState({ userId: '', password: '', name: '' });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authMessage, setAuthMessage] = useState({ type: '', text: '' });
 
   const [users, setUsers] = useState<User[]>([]);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -401,14 +403,21 @@ const App: React.FC = () => {
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthMessage({ type: '', text: '' });
+
+    if (!authForm.userId || !authForm.password || (!isLoginMode && !authForm.name)) {
+      setAuthMessage({ type: 'error', text: '모든 항목을 입력해주세요.' });
+      return;
+    }
 
     // Validate userId to ensure it only contains alphanumeric characters
     const validUserIdRegex = /^[a-zA-Z0-9_.-]+$/;
     if (!validUserIdRegex.test(authForm.userId)) {
-      alert('아이디는 영문, 숫자, 기호(_ . -)만 사용할 수 있습니다. (한글/공백 불가)');
+      setAuthMessage({ type: 'error', text: '아이디는 영문, 숫자, 기호(_ . -)만 사용할 수 있습니다. (한글/공백 불가)' });
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const email = `${authForm.userId}@smartpl.app`;
 
@@ -439,7 +448,7 @@ const App: React.FC = () => {
                     setAppMode('staff_dashboard');
                     setStaffTab('checklist');
                   } else {
-                    alert('연결된 직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.');
+                    setAuthMessage({ type: 'error', text: '연결된 직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.' });
                     setAppMode('staff_select');
                   }
                 }
@@ -457,17 +466,17 @@ const App: React.FC = () => {
               setAppMode('admin');
             }
           } else {
-            alert('사용자 정보를 찾을 수 없습니다.');
+            setAuthMessage({ type: 'error', text: '사용자 정보를 찾을 수 없습니다.' });
             await signOut(auth);
           }
         } catch (error: any) {
           console.error('Login error:', error);
           if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            alert('아이디 또는 비밀번호가 일치하지 않습니다.');
+            setAuthMessage({ type: 'error', text: '아이디 또는 비밀번호가 일치하지 않습니다.' });
           } else if (error.code === 'auth/api-key-not-valid') {
-            alert('Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.');
+            setAuthMessage({ type: 'error', text: 'Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.' });
           } else {
-            alert(`로그인 오류: ${error.message}`);
+            setAuthMessage({ type: 'error', text: `로그인 오류: ${error.message}` });
           }
         }
       } else {
@@ -479,7 +488,7 @@ const App: React.FC = () => {
           const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
           
           if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
-            alert('이미 존재하는 아이디입니다.');
+            setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
             await signOut(auth);
             return;
           }
@@ -495,28 +504,30 @@ const App: React.FC = () => {
           const updatedUsers = [...currentUsers, newUser];
           await setDoc(usersDocRef, { list: updatedUsers }, { merge: true });
           
-          alert('회원가입이 완료되었습니다. 로그인해주세요!');
+          setAuthMessage({ type: 'success', text: '회원가입이 완료되었습니다. 로그인해주세요!' });
           await signOut(auth); // Sign out after registration so they can log in
           setIsLoginMode(true);
           setUsers(updatedUsers);
         } catch (error: any) {
           console.error('Signup error:', error);
           if (error.code === 'auth/email-already-in-use') {
-            alert('이미 존재하는 아이디입니다.');
+            setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
           } else if (error.code === 'auth/weak-password') {
-            alert('비밀번호는 6자리 이상이어야 합니다.');
+            setAuthMessage({ type: 'error', text: '비밀번호는 6자리 이상이어야 합니다.' });
           } else if (error.code === 'auth/operation-not-allowed') {
-            alert('Firebase 설정 오류: 콘솔에서 [Authentication] -> [Sign-in method] 탭으로 이동하여 "이메일/비밀번호" 로그인을 활성화해주세요!');
+            setAuthMessage({ type: 'error', text: 'Firebase 설정 오류: 콘솔에서 [Authentication] -> [Sign-in method] 탭으로 이동하여 "이메일/비밀번호" 로그인을 활성화해주세요!' });
           } else if (error.code === 'auth/api-key-not-valid') {
-            alert('Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.');
+            setAuthMessage({ type: 'error', text: 'Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.' });
           } else {
-            alert(`회원가입 중 오류가 발생했습니다: ${error.message}`);
+            setAuthMessage({ type: 'error', text: `회원가입 중 오류가 발생했습니다: ${error.message}` });
           }
         }
       }
     } catch (error) {
       console.error('Authentication error:', error);
-      alert('인증 처리 중 오류가 발생했습니다.');
+      setAuthMessage({ type: 'error', text: '인증 처리 중 오류가 발생했습니다.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -998,11 +1009,18 @@ const App: React.FC = () => {
             <h1 className="text-3xl font-black text-white tracking-tighter">Smart P&L Analyst</h1>
             <p className="text-slate-400 text-sm mt-2 font-medium">안전한 개별 계정으로 시작하세요.</p>
           </div>
+
+          {authMessage.text && (
+            <div className={`p-4 rounded-2xl mb-6 text-sm font-bold ${authMessage.type === 'error' ? 'bg-rose-500/20 text-rose-200 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'}`}>
+              {authMessage.text}
+            </div>
+          )}
+
           <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {!isLoginMode && <input type="text" required placeholder="사용자 이름" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500" value={authForm.name} onChange={e => setAuthForm({...authForm, name: e.target.value})} />}
-            <input type="text" required placeholder="아이디" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={authForm.userId} onChange={e => setAuthForm({...authForm, userId: e.target.value})} />
-            <input type="password" required placeholder="비밀번호" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-            <button type="submit" className="w-full bg-white text-slate-900 py-5 rounded-2xl font-black hover:bg-slate-100">{isLoginMode ? '로그인' : '가입하기'}</button>
+            {!isLoginMode && <input type="text" placeholder="사용자 이름" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500" value={authForm.name} onChange={e => setAuthForm({...authForm, name: e.target.value})} />}
+            <input type="text" placeholder="아이디" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={authForm.userId} onChange={e => setAuthForm({...authForm, userId: e.target.value})} />
+            <input type="password" placeholder="비밀번호" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+            <button type="submit" disabled={isSubmitting} className="w-full bg-white text-slate-900 py-5 rounded-2xl font-black hover:bg-slate-100 disabled:opacity-50 transition-all">{isSubmitting ? '처리 중...' : (isLoginMode ? '로그인' : '가입하기')}</button>
           </form>
           <div className="mt-8 text-center">
             <button onClick={() => setIsLoginMode(!isLoginMode)} className="text-slate-400 text-xs font-bold hover:text-white underline">{isLoginMode ? '새 계정 만들기' : '이미 계정이 있으신가요? 로그인'}</button>
