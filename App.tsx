@@ -401,7 +401,7 @@ const App: React.FC = () => {
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const email = `${authForm.userId}@smartpl.app`;
 
