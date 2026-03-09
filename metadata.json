@@ -1,0 +1,8 @@
+{
+  "name": "메종드 쿠로이 ",
+  "description": "A sophisticated Profit & Loss management tool that transforms financial data into actionable insights using AI. Track revenue, manage expenses, and visualize your business health with beautiful charts and automated financial analysis.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
