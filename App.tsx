@@ -404,14 +404,16 @@ const App: React.FC = () => {
     
     try {
       const email = `${authForm.userId}@smartpl.app`;
-      const usersDocRef = doc(db, 'app_data', 'users');
-      const usersDocSnap = await getDoc(usersDocRef);
-      const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
-      setUsers(currentUsers);
 
       if (isLoginMode) {
         try {
           await signInWithEmailAndPassword(auth, email, authForm.password);
+          
+          const usersDocRef = doc(db, 'app_data', 'users');
+          const usersDocSnap = await getDoc(usersDocRef);
+          const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
+          setUsers(currentUsers);
+          
           const foundUser = currentUsers.find((u: any) => u.userId === authForm.userId);
           
           if (foundUser) {
@@ -449,19 +451,25 @@ const App: React.FC = () => {
             }
           } else {
             alert('사용자 정보를 찾을 수 없습니다.');
+            await signOut(auth);
           }
         } catch (error: any) {
           console.error('Login error:', error);
           alert('아이디 또는 비밀번호가 일치하지 않습니다.');
         }
       } else {
-        if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
-          alert('이미 존재하는 아이디입니다.');
-          return;
-        }
-        
         try {
           await createUserWithEmailAndPassword(auth, email, authForm.password);
+          
+          const usersDocRef = doc(db, 'app_data', 'users');
+          const usersDocSnap = await getDoc(usersDocRef);
+          const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
+          
+          if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
+            alert('이미 존재하는 아이디입니다.');
+            await signOut(auth);
+            return;
+          }
           
           const isFirstUser = currentUsers.length === 0;
           const newUser: User = { 
