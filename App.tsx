@@ -493,7 +493,7 @@ const App: React.FC = () => {
           } else if (error.code === 'auth/weak-password') {
             alert('비밀번호는 6자리 이상이어야 합니다.');
           } else {
-            alert('회원가입 중 오류가 발생했습니다.');
+            alert(`회원가입 중 오류가 발생했습니다: ${error.message}`);
           }
         }
       }
