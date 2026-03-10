@@ -4,26 +4,13 @@ import { PLEntry, Staff, Vendor, FixedExpenseItem, User, Task, InventoryItem, Or
 import EntryModal from './components/EntryModal';
 import { analyzeFinancials } from './services/geminiService';
 
-const INITIAL_STAFF: Staff[] = [
-  { id: 's1', name: '김주방', type: '정규직', basePay: 3500000, role: '주방' },
-  { id: 's2', name: '이서빙', type: '알바', basePay: 10500, role: '홀' },
-];
+const INITIAL_STAFF: Staff[] = [];
 
-const INITIAL_VENDORS: Vendor[] = [
-  { id: 'v1', name: '프레시웨이' },
-  { id: 'v2', name: '마켓보로' },
-];
+const INITIAL_VENDORS: Vendor[] = [];
 
-const INITIAL_FIXED_EXPENSES: FixedExpenseItem[] = [
-  { id: 'f1', name: '매장 월세', defaultCategory: '월세', monthlyAmount: 3200000 },
-  { id: 'f2', name: '공과금 통합', defaultCategory: '관리비', monthlyAmount: 650000 },
-  { id: 'f3', name: '보안/인터넷', defaultCategory: '비고정지출', monthlyAmount: 120000 },
-];
+const INITIAL_FIXED_EXPENSES: FixedExpenseItem[] = [];
 
-const INITIAL_ENTRIES: PLEntry[] = [
-  { id: '1', category: '홀매출', type: '매출', amount: 1850000, date: new Date().toISOString().split('T')[0], description: '금일 점심 만석' },
-  { id: '2', category: '식자재', type: '지출', amount: 320000, date: new Date().toISOString().split('T')[0], description: '야채/청과 추가 매입', vendorId: 'v1' },
-];
+const INITIAL_ENTRIES: PLEntry[] = [];
 
 const INITIAL_TASKS: Task[] = [
   // Morning Preparation
@@ -1169,6 +1156,24 @@ const App: React.FC = () => {
               <button onClick={() => setIsSyncModalOpen(true)} className="px-5 py-3 rounded-2xl border border-slate-200 bg-white text-xs font-black flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                 데이터 연동
+              </button>
+              <button onClick={() => {
+                if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                  setEntries([]);
+                  setStaffList([]);
+                  setVendorList([]);
+                  setFixedExpenseItems([]);
+                  setTasks([]);
+                  setInventory([]);
+                  setOrders([]);
+                  setAttendanceList([]);
+                  setStoreSettings(null);
+                  localStorage.removeItem(`app_data_${currentUser.userId}`);
+                  alert('데이터가 초기화되었습니다.');
+                }
+              }} className="px-5 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 text-xs font-black flex items-center gap-2 hover:bg-rose-100 transition-colors shadow-sm">
+                <Trash2 className="w-4 h-4" />
+                데이터 초기화
               </button>
               <button onClick={() => {
                 if (!navigator.geolocation) {
