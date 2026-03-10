@@ -1,8 +1,5 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { auth, db, secondaryAuth } from './firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { PLEntry, Staff, Vendor, FixedExpenseItem, User, Task, InventoryItem, Order, OrderItem, Attendance, StoreSettings } from './types';
 import EntryModal from './components/EntryModal';
 import { analyzeFinancials } from './services/geminiService';
@@ -201,17 +198,14 @@ const App: React.FC = () => {
   const [periodTab, setPeriodTab] = useState<'day' | 'month' | 'year'>('month');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Find user in Firestore users list
-        const usersDocRef = doc(db, 'app_data', 'users');
-        const usersDocSnap = await getDoc(usersDocRef);
-        const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
-        setUsers(currentUsers);
+    const checkAuth = () => {
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const storedUsers = JSON.parse(localStorage.getItem('app_users') || '{"list":[]}').list;
+        setUsers(storedUsers);
         
-        // The email is userId@smartpl.app
-        const userId = user.email?.split('@')[0];
-        const foundUser = currentUsers.find((u: any) => u.userId === userId);
+        const foundUser = storedUsers.find((u: any) => u.userId === user.userId);
         
         if (foundUser) {
           setCurrentUser((prev) => {
@@ -224,13 +218,17 @@ const App: React.FC = () => {
             }
             return foundUser;
           });
+        } else {
+          setCurrentUser(null);
+          setIsDataLoaded(false);
+          localStorage.removeItem('currentUser');
         }
       } else {
         setCurrentUser(null);
         setIsDataLoaded(false);
       }
-    });
-    return () => unsubscribe();
+    };
+    checkAuth();
   }, []);
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -293,17 +291,15 @@ const App: React.FC = () => {
     return { totalExp, vendors: sortedVendors };
   }, [entries, periodTab, vendorList, todayStr, thisMonthStr]);
 
-  // 1. 로그인 시 사용자 데이터 로드 로직 강화 (Firestore 연동)
+  // 1. 로그인 시 사용자 데이터 로드 로직 (localStorage 연동)
   useEffect(() => {
     if (currentUser) {
-      const loadData = async () => {
+      const loadData = () => {
         try {
-          const docRef = doc(db, 'app_data', currentUser.userId);
-          const docSnap = await getDoc(docRef);
+          const storedData = localStorage.getItem(`app_data_${currentUser.userId}`);
           
-          let parsed;
-          if (docSnap.exists()) {
-            parsed = docSnap.data();
+          if (storedData) {
+            const parsed = JSON.parse(storedData);
             setEntries(parsed.entries || []);
             let loadedStaff = parsed.staffList || INITIAL_STAFF;
             loadedStaff = loadedStaff.map((s: Staff) => {
@@ -353,7 +349,7 @@ const App: React.FC = () => {
             setTasks(INITIAL_TASKS);
           }
         } catch (e) {
-          console.error('Failed to load data from Firestore:', e);
+          console.error('Failed to load data from localStorage:', e);
           alert('데이터를 불러오는 중 오류가 발생했습니다.');
         } finally {
           setIsDataLoaded(true);
@@ -365,21 +361,20 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  // 2. 데이터 변경 시 자동 저장 (Firestore 연동)
+  // 2. 데이터 변경 시 자동 저장 (localStorage 연동)
   useEffect(() => {
     if (currentUser && isDataLoaded) {
-      const saveData = async () => {
+      const saveData = () => {
         try {
           const dataToSave = { entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings };
-          const docRef = doc(db, 'app_data', currentUser.userId);
-          await setDoc(docRef, dataToSave, { merge: true });
+          localStorage.setItem(`app_data_${currentUser.userId}`, JSON.stringify(dataToSave));
         } catch (e) {
-          console.error('Failed to save data to Firestore:', e);
+          console.error('Failed to save data to localStorage:', e);
         }
       };
       
-      // 디바운싱을 적용하여 너무 잦은 API 호출 방지
-      const timeoutId = setTimeout(saveData, 1000); // Increased debounce time for Firestore
+      // 디바운싱을 적용하여 너무 잦은 쓰기 방지
+      const timeoutId = setTimeout(saveData, 500);
       return () => clearTimeout(timeoutId);
     }
   }, [entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings, currentUser, isDataLoaded]);
@@ -419,109 +414,82 @@ const App: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const email = `${authForm.userId}@smartpl.app`;
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const storedUsersRaw = localStorage.getItem('app_users');
+      const currentUsers = storedUsersRaw ? JSON.parse(storedUsersRaw).list : [];
 
       if (isLoginMode) {
-        try {
-          await signInWithEmailAndPassword(auth, email, authForm.password);
-          
-          const usersDocRef = doc(db, 'app_data', 'users');
-          const usersDocSnap = await getDoc(usersDocRef);
-          const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
+        const foundUser = currentUsers.find((u: any) => u.userId === authForm.userId && u.password === authForm.password);
+        
+        if (foundUser) {
+          // Don't store password in currentUser state
+          const { password, ...userWithoutPassword } = foundUser;
+          localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+          setCurrentUser(userWithoutPassword);
           setUsers(currentUsers);
           
-          const foundUser = currentUsers.find((u: any) => u.userId === authForm.userId);
-          
-          if (foundUser) {
-            setCurrentUser(foundUser);
-            if (foundUser.role === 'staff') {
-              if (foundUser.staffId) {
-                const staff = staffList.find(s => s.id === foundUser.staffId);
-                if (staff) {
-                  setActiveStaff(staff);
-                  setAppMode('staff_dashboard');
-                  setStaffTab('checklist');
-                } else {
-                  const staffByName = staffList.find(s => s.name === foundUser.name);
-                  if (staffByName) {
-                    setActiveStaff(staffByName);
-                    setAppMode('staff_dashboard');
-                    setStaffTab('checklist');
-                  } else {
-                    setAuthMessage({ type: 'error', text: '연결된 직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.' });
-                    setAppMode('staff_select');
-                  }
-                }
+          if (foundUser.role === 'staff') {
+            if (foundUser.staffId) {
+              const staff = staffList.find(s => s.id === foundUser.staffId);
+              if (staff) {
+                setActiveStaff(staff);
+                setAppMode('staff_dashboard');
+                setStaffTab('checklist');
               } else {
-                const staff = staffList.find(s => s.name === foundUser.name);
-                if (staff) {
-                  setActiveStaff(staff);
+                const staffByName = staffList.find(s => s.name === foundUser.name);
+                if (staffByName) {
+                  setActiveStaff(staffByName);
                   setAppMode('staff_dashboard');
                   setStaffTab('checklist');
                 } else {
+                  setAuthMessage({ type: 'error', text: '연결된 직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.' });
                   setAppMode('staff_select');
                 }
               }
             } else {
-              setAppMode('admin');
+              const staff = staffList.find(s => s.name === foundUser.name);
+              if (staff) {
+                setActiveStaff(staff);
+                setAppMode('staff_dashboard');
+                setStaffTab('checklist');
+              } else {
+                setAppMode('staff_select');
+              }
             }
           } else {
-            setAuthMessage({ type: 'error', text: '사용자 정보를 찾을 수 없습니다.' });
-            await signOut(auth);
+            setAppMode('admin');
           }
-        } catch (error: any) {
-          console.error('Login error:', error);
-          if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            setAuthMessage({ type: 'error', text: '아이디 또는 비밀번호가 일치하지 않습니다.' });
-          } else if (error.code === 'auth/api-key-not-valid') {
-            setAuthMessage({ type: 'error', text: 'Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.' });
-          } else {
-            setAuthMessage({ type: 'error', text: `로그인 오류: ${error.message}` });
-          }
+        } else {
+          setAuthMessage({ type: 'error', text: '아이디 또는 비밀번호가 일치하지 않습니다.' });
         }
       } else {
-        try {
-          await createUserWithEmailAndPassword(auth, email, authForm.password);
-          
-          const usersDocRef = doc(db, 'app_data', 'users');
-          const usersDocSnap = await getDoc(usersDocRef);
-          const currentUsers = usersDocSnap.exists() ? usersDocSnap.data().list || [] : [];
-          
-          if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
-            setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
-            await signOut(auth);
-            return;
-          }
-          
-          const isFirstUser = currentUsers.length === 0;
-          const newUser: User = { 
-            id: `u-${Date.now()}`, 
-            userId: authForm.userId, 
-            name: authForm.name,
-            role: isFirstUser ? 'admin' : 'staff' 
-          };
-          
-          const updatedUsers = [...currentUsers, newUser];
-          await setDoc(usersDocRef, { list: updatedUsers }, { merge: true });
-          
-          setAuthMessage({ type: 'success', text: '회원가입이 완료되었습니다. 로그인해주세요!' });
-          await signOut(auth); // Sign out after registration so they can log in
-          setIsLoginMode(true);
-          setUsers(updatedUsers);
-        } catch (error: any) {
-          console.error('Signup error:', error);
-          if (error.code === 'auth/email-already-in-use') {
-            setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
-          } else if (error.code === 'auth/weak-password') {
-            setAuthMessage({ type: 'error', text: '비밀번호는 6자리 이상이어야 합니다.' });
-          } else if (error.code === 'auth/operation-not-allowed') {
-            setAuthMessage({ type: 'error', text: 'Firebase 설정 오류: 콘솔에서 [Authentication] -> [Sign-in method] 탭으로 이동하여 "이메일/비밀번호" 로그인을 활성화해주세요!' });
-          } else if (error.code === 'auth/api-key-not-valid') {
-            setAuthMessage({ type: 'error', text: 'Firebase API 키가 유효하지 않습니다. 프로젝트 설정을 확인해주세요.' });
-          } else {
-            setAuthMessage({ type: 'error', text: `회원가입 중 오류가 발생했습니다: ${error.message}` });
-          }
+        if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
+          setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
+          return;
         }
+        
+        if (authForm.password.length < 6) {
+          setAuthMessage({ type: 'error', text: '비밀번호는 6자리 이상이어야 합니다.' });
+          return;
+        }
+        
+        const isFirstUser = currentUsers.length === 0;
+        const newUser = { 
+          id: `u-${Date.now()}`, 
+          userId: authForm.userId, 
+          name: authForm.name,
+          password: authForm.password, // Storing password in local storage for demo purposes
+          role: isFirstUser ? 'admin' : 'staff' 
+        };
+        
+        const updatedUsers = [...currentUsers, newUser];
+        localStorage.setItem('app_users', JSON.stringify({ list: updatedUsers }));
+        
+        setAuthMessage({ type: 'success', text: '회원가입이 완료되었습니다. 로그인해주세요!' });
+        setIsLoginMode(true);
+        setUsers(updatedUsers);
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -534,7 +502,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     if (window.confirm('로그아웃 하시겠습니까?')) {
       try {
-        await signOut(auth);
+        localStorage.removeItem('currentUser');
         setCurrentUser(null);
         setEntries([]);
         setStaffList([]);
@@ -1815,19 +1783,8 @@ const App: React.FC = () => {
                   return;
                 }
                 
-                try {
-                  const email = `${userId}@smartpl.app`;
-                  await createUserWithEmailAndPassword(secondaryAuth, email, password);
-                  await signOut(secondaryAuth);
-                } catch (error: any) {
-                  console.error('Admin create user error:', error);
-                  if (error.code === 'auth/email-already-in-use') {
-                    alert('이미 존재하는 아이디입니다.');
-                  } else if (error.code === 'auth/weak-password') {
-                    alert('비밀번호는 6자리 이상이어야 합니다.');
-                  } else {
-                    alert('사용자 생성 중 오류가 발생했습니다.');
-                  }
+                if (password.length < 6) {
+                  alert('비밀번호는 6자리 이상이어야 합니다.');
                   return;
                 }
 
@@ -1842,8 +1799,7 @@ const App: React.FC = () => {
               }
               
               setUsers(updatedUsers);
-              const usersDocRef = doc(db, 'app_data', 'users');
-              await setDoc(usersDocRef, { list: updatedUsers }, { merge: true });
+              localStorage.setItem('app_users', JSON.stringify({ list: updatedUsers }));
               
               (e.target as HTMLFormElement).reset(); 
             }} className="space-y-4 mb-10">
@@ -1892,8 +1848,7 @@ const App: React.FC = () => {
                       if (window.confirm('정말 삭제하시겠습니까?')) {
                         const updatedUsers = users.filter(user => user.id !== u.id);
                         setUsers(updatedUsers);
-                        const usersDocRef = doc(db, 'app_data', 'users');
-                        await setDoc(usersDocRef, { list: updatedUsers }, { merge: true });
+                        localStorage.setItem('app_users', JSON.stringify({ list: updatedUsers }));
                       }
                     }} className="text-rose-400 text-[10px] font-black uppercase">삭제</button>
                   </div>
