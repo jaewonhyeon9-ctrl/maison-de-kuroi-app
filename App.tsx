@@ -1,5 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  PlusCircle, Trash2, TrendingUp, TrendingDown, DollarSign, 
+  Calendar, PieChart, Users, Settings, LogOut, CheckCircle, 
+  XCircle, Clock, FileText, ChevronRight, Package, ShoppingCart,
+  AlertTriangle, CheckSquare, ListTodo, Edit2, Save, X, UserPlus,
+  Building2, Receipt, CreditCard, Wallet, Check, ChevronDown,
+  Activity, Zap, Target, Sparkles, BrainCircuit, MessageSquare
+} from 'lucide-react';
 import { PLEntry, Staff, Vendor, FixedExpenseItem, User, Task, InventoryItem, Order, OrderItem, Attendance, StoreSettings } from './types';
 import EntryModal from './components/EntryModal';
 import { analyzeFinancials } from './services/geminiService';
