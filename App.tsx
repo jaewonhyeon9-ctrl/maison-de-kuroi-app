@@ -183,6 +183,7 @@ const App: React.FC = () => {
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [isFixedExpenseModalOpen, setIsFixedExpenseModalOpen] = useState(false);
+  const [editingFixedExpense, setEditingFixedExpense] = useState<FixedExpenseItem | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [syncCode, setSyncCode] = useState('');
   const [editingInventory, setEditingInventory] = useState<InventoryItem | null>(null);
@@ -321,14 +322,6 @@ const App: React.FC = () => {
               return t;
             });
 
-            if (!loadedTasks.some((t: Task) => t.title === '유니폼 착용') || !loadedTasks.some((t: Task) => t.title.includes('가스밸브열기'))) {
-              const existingTitles = new Set(loadedTasks.map((t: Task) => t.title));
-              const newTasks = INITIAL_TASKS.filter(t => !existingTitles.has(t.title)).map(t => ({
-                ...t,
-                id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-              }));
-              loadedTasks = [...loadedTasks, ...newTasks];
-            }
             setTasks(loadedTasks);
             
             setInventory(parsed.inventory || []);
@@ -1555,12 +1548,47 @@ const App: React.FC = () => {
       {isFixedExpenseModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
-            <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">고정 지출 설정</h2><button onClick={() => setIsFixedExpenseModalOpen(false)} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-            <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.currentTarget as HTMLFormElement); setFixedExpenseItems(prev => [...prev, { id: `fixed-${Date.now()}`, name: formData.get('name') as string, defaultCategory: formData.get('category') as any, monthlyAmount: Number(formData.get('amount')) }]); (e.target as HTMLFormElement).reset(); }} className="space-y-5 mb-10">
-              <div className="grid grid-cols-2 gap-4"><input name="name" required placeholder="항목명" className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm" /><select name="category" className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm"><option value="월세">월세</option><option value="관리비">관리비</option><option value="비고정지출">기타 고정비</option></select></div>
-              <input name="amount" type="number" required placeholder="월 고정 금액 (원)" className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-black text-xl" /><button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black">시스템 등록</button>
+            <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">고정 지출 설정</h2><button onClick={() => { setIsFixedExpenseModalOpen(false); setEditingFixedExpense(null); }} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              const formData = new FormData(e.currentTarget as HTMLFormElement); 
+              const name = formData.get('name') as string;
+              const category = formData.get('category') as any;
+              const amount = Number(formData.get('amount'));
+              
+              if (editingFixedExpense) {
+                setFixedExpenseItems(prev => prev.map(item => item.id === editingFixedExpense.id ? { ...item, name, defaultCategory: category, monthlyAmount: amount } : item));
+                setEditingFixedExpense(null);
+              } else {
+                setFixedExpenseItems(prev => [...prev, { id: `fixed-${Date.now()}`, name, defaultCategory: category, monthlyAmount: amount }]); 
+              }
+              (e.target as HTMLFormElement).reset(); 
+            }} className="space-y-5 mb-10">
+              <div className="grid grid-cols-2 gap-4">
+                <input name="name" required defaultValue={editingFixedExpense?.name || ''} placeholder="항목명" className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm" />
+                <select name="category" defaultValue={editingFixedExpense?.defaultCategory || '월세'} className="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm">
+                  <option value="월세">월세</option>
+                  <option value="관리비">관리비</option>
+                  <option value="비고정지출">기타 고정비</option>
+                </select>
+              </div>
+              <input name="amount" type="number" required defaultValue={editingFixedExpense?.monthlyAmount || ''} placeholder="월 고정 금액 (원)" className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-black text-xl" />
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-slate-900 text-white py-5 rounded-[2rem] font-black">{editingFixedExpense ? '수정 완료' : '시스템 등록'}</button>
+                {editingFixedExpense && <button type="button" onClick={() => setEditingFixedExpense(null)} className="px-6 bg-slate-100 text-slate-600 rounded-[2rem] font-black">취소</button>}
+              </div>
             </form>
-            <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">{fixedExpenseItems.map(item => (<div key={item.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl"><span className="font-bold text-sm text-slate-700">{item.name} ({item.monthlyAmount.toLocaleString()}원)</span><button onClick={() => setFixedExpenseItems(l => l.filter(i => i.id !== item.id))} className="text-rose-400 text-[10px] font-black uppercase">삭제</button></div>))}</div>
+            <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
+              {fixedExpenseItems.map(item => (
+                <div key={item.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+                  <span className="font-bold text-sm text-slate-700">{item.name} ({item.monthlyAmount.toLocaleString()}원)</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingFixedExpense(item)} className="text-indigo-400 text-[10px] font-black uppercase">수정</button>
+                    <button onClick={() => setFixedExpenseItems(l => l.filter(i => i.id !== item.id))} className="text-rose-400 text-[10px] font-black uppercase">삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
