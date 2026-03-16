@@ -11,6 +11,9 @@ import {
 import { PLEntry, Staff, Vendor, FixedExpenseItem, User, Task, InventoryItem, Order, OrderItem, Attendance, StoreSettings } from './types';
 import EntryModal from './components/EntryModal';
 import { analyzeFinancials } from './services/geminiService';
+import { auth, db } from './firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const INITIAL_STAFF: Staff[] = [];
 
@@ -287,15 +290,26 @@ const App: React.FC = () => {
     return { totalExp, vendors: sortedVendors };
   }, [entries, periodTab, vendorList, todayStr, thisMonthStr]);
 
-  // 1. 로그인 시 사용자 데이터 로드 로직 (localStorage 연동)
+  // 1. 로그인 시 사용자 데이터 로드 로직 (Firebase 연동)
   useEffect(() => {
-    if (currentUser) {
-      const loadData = () => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Firebase Auth user is logged in
+        const userObj: User = {
+          id: user.uid,
+          userId: user.email || '',
+          name: user.displayName || '관리자',
+          role: 'admin',
+          password: ''
+        };
+        setCurrentUser(userObj);
+
         try {
-          const storedData = localStorage.getItem(`app_data_${currentUser.userId}`);
+          const docRef = doc(db, 'stores', user.uid);
+          const docSnap = await getDoc(docRef);
           
-          if (storedData) {
-            const parsed = JSON.parse(storedData);
+          if (docSnap.exists()) {
+            const parsed = docSnap.data();
             setEntries(parsed.entries || []);
             let loadedStaff = parsed.staffList || INITIAL_STAFF;
             loadedStaff = loadedStaff.map((s: Staff) => {
@@ -337,32 +351,34 @@ const App: React.FC = () => {
             setTasks(INITIAL_TASKS);
           }
         } catch (e) {
-          console.error('Failed to load data from localStorage:', e);
+          console.error('Failed to load data from Firebase:', e);
           alert('데이터를 불러오는 중 오류가 발생했습니다.');
         } finally {
           setIsDataLoaded(true);
         }
-      };
-      loadData();
-    } else {
-      setIsDataLoaded(false);
-    }
-  }, [currentUser]);
+      } else {
+        setCurrentUser(null);
+        setIsDataLoaded(false);
+      }
+    });
 
-  // 2. 데이터 변경 시 자동 저장 (localStorage 연동)
+    return () => unsubscribe();
+  }, []);
+
+  // 2. 데이터 변경 시 자동 저장 (Firebase 연동)
   useEffect(() => {
     if (currentUser && isDataLoaded) {
-      const saveData = () => {
+      const saveData = async () => {
         try {
           const dataToSave = { entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings };
-          localStorage.setItem(`app_data_${currentUser.userId}`, JSON.stringify(dataToSave));
+          await setDoc(doc(db, 'stores', currentUser.id), dataToSave);
         } catch (e) {
-          console.error('Failed to save data to localStorage:', e);
+          console.error('Failed to save data to Firebase:', e);
         }
       };
       
       // 디바운싱을 적용하여 너무 잦은 쓰기 방지
-      const timeoutId = setTimeout(saveData, 500);
+      const timeoutId = setTimeout(saveData, 1000);
       return () => clearTimeout(timeoutId);
     }
   }, [entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings, currentUser, isDataLoaded]);
@@ -394,94 +410,43 @@ const App: React.FC = () => {
     }
 
     // Validate userId to ensure it only contains alphanumeric characters
+    // For Firebase Email/Password, we need an email format. We will append a dummy domain if it's just an ID.
     const validUserIdRegex = /^[a-zA-Z0-9_.-]+$/;
-    if (!validUserIdRegex.test(authForm.userId)) {
-      setAuthMessage({ type: 'error', text: '아이디는 영문, 숫자, 기호(_ . -)만 사용할 수 있습니다. (한글/공백 불가)' });
-      return;
+    let email = authForm.userId;
+    if (!email.includes('@')) {
+      if (!validUserIdRegex.test(authForm.userId)) {
+        setAuthMessage({ type: 'error', text: '아이디는 영문, 숫자, 기호(_ . -)만 사용할 수 있습니다. (한글/공백 불가)' });
+        return;
+      }
+      email = `${authForm.userId}@store.local`;
     }
 
     setIsSubmitting(true);
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const storedUsersRaw = localStorage.getItem('app_users');
-      const currentUsers = storedUsersRaw ? JSON.parse(storedUsersRaw).list : [];
-
       if (isLoginMode) {
-        const foundUser = currentUsers.find((u: any) => u.userId === authForm.userId && u.password === authForm.password);
-        
-        if (foundUser) {
-          // Don't store password in currentUser state
-          const { password, ...userWithoutPassword } = foundUser;
-          localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-          setCurrentUser(userWithoutPassword);
-          setUsers(currentUsers);
-          
-          if (foundUser.role === 'staff') {
-            if (foundUser.staffId) {
-              const staff = staffList.find(s => s.id === foundUser.staffId);
-              if (staff) {
-                setActiveStaff(staff);
-                setAppMode('staff_dashboard');
-                setStaffTab('checklist');
-              } else {
-                const staffByName = staffList.find(s => s.name === foundUser.name);
-                if (staffByName) {
-                  setActiveStaff(staffByName);
-                  setAppMode('staff_dashboard');
-                  setStaffTab('checklist');
-                } else {
-                  setAuthMessage({ type: 'error', text: '연결된 직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.' });
-                  setAppMode('staff_select');
-                }
-              }
-            } else {
-              const staff = staffList.find(s => s.name === foundUser.name);
-              if (staff) {
-                setActiveStaff(staff);
-                setAppMode('staff_dashboard');
-                setStaffTab('checklist');
-              } else {
-                setAppMode('staff_select');
-              }
-            }
-          } else {
-            setAppMode('admin');
-          }
-        } else {
-          setAuthMessage({ type: 'error', text: '아이디 또는 비밀번호가 일치하지 않습니다.' });
-        }
+        await signInWithEmailAndPassword(auth, email, authForm.password);
+        setAppMode('admin');
       } else {
-        if (currentUsers.find((u: any) => u.userId === authForm.userId)) {
-          setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
-          return;
-        }
-        
         if (authForm.password.length < 6) {
           setAuthMessage({ type: 'error', text: '비밀번호는 6자리 이상이어야 합니다.' });
           return;
         }
         
-        const isFirstUser = currentUsers.length === 0;
-        const newUser = { 
-          id: `u-${Date.now()}`, 
-          userId: authForm.userId, 
-          name: authForm.name,
-          password: authForm.password, // Storing password in local storage for demo purposes
-          role: isFirstUser ? 'admin' : 'staff' 
-        };
+        const userCredential = await createUserWithEmailAndPassword(auth, email, authForm.password);
+        await updateProfile(userCredential.user, { displayName: authForm.name });
         
-        const updatedUsers = [...currentUsers, newUser];
-        localStorage.setItem('app_users', JSON.stringify({ list: updatedUsers }));
-        
-        setAuthMessage({ type: 'success', text: '회원가입이 완료되었습니다. 로그인해주세요!' });
-        setIsLoginMode(true);
-        setUsers(updatedUsers);
+        setAuthMessage({ type: 'success', text: '회원가입이 완료되었습니다!' });
+        setAppMode('admin');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Authentication error:', error);
-      setAuthMessage({ type: 'error', text: '인증 처리 중 오류가 발생했습니다.' });
+      if (error.code === 'auth/email-already-in-use') {
+        setAuthMessage({ type: 'error', text: '이미 존재하는 아이디입니다.' });
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        setAuthMessage({ type: 'error', text: '아이디 또는 비밀번호가 일치하지 않습니다.' });
+      } else {
+        setAuthMessage({ type: 'error', text: '인증 처리 중 오류가 발생했습니다.' });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -490,7 +455,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     if (window.confirm('로그아웃 하시겠습니까?')) {
       try {
-        localStorage.removeItem('currentUser');
+        await signOut(auth);
         setCurrentUser(null);
         setEntries([]);
         setStaffList([]);
