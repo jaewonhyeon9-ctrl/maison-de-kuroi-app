@@ -188,6 +188,7 @@ const App: React.FC = () => {
   const [isFixedExpenseModalOpen, setIsFixedExpenseModalOpen] = useState(false);
   const [editingFixedExpense, setEditingFixedExpense] = useState<FixedExpenseItem | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [syncCode, setSyncCode] = useState('');
   const [editingInventory, setEditingInventory] = useState<InventoryItem | null>(null);
 
@@ -1105,7 +1106,7 @@ const App: React.FC = () => {
               <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest mt-1 block">Smart P&L Analyst</span>
             </div>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-8">
             <div className="flex items-center gap-4 pr-8 border-r border-slate-200">
               <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-600 shadow-inner">
                 {currentUser.name.charAt(0).toUpperCase()}
@@ -1170,7 +1171,7 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 pt-16 space-y-32">
         {/* AI Insight Section */}
-        <section className="bg-white rounded-[4rem] p-16 text-slate-900 shadow-2xl relative overflow-hidden group">
+        <section className="bg-white rounded-[4rem] p-8 md:p-16 text-slate-900 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-2/3 h-full opacity-5 pointer-events-none transition-transform duration-1000 group-hover:scale-110">
              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 100 C 20 0 50 0 100 100 Z" fill="currentColor" /></svg>
           </div>
@@ -1268,7 +1269,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Financial Performance Section */}
-        <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-16 shadow-2xl border border-white/20 space-y-32">
+        <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-8 md:p-16 shadow-2xl border border-white/20 space-y-32">
           <AnalysisReport stats={dashboardStats.today} title={`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 실적`} subtitle="선택하신 날짜의 상세 매출 비중 리포트입니다." />
           <div className="pt-32 border-t border-slate-100">
             <AnalysisReport stats={dashboardStats.month} title={`${selectedDate.getMonth() + 1}월 누적 성과`} subtitle="이번 달 현재까지의 통합 성과 리포트입니다." isMonth={true} />
@@ -1276,7 +1277,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Expenses & Vendors Section */}
-        <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-16 shadow-2xl border border-white/20 space-y-16">
+        <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-8 md:p-16 shadow-2xl border border-white/20 space-y-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 px-2">
             <div>
               <h2 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">지출 분석</h2>
@@ -1319,7 +1320,7 @@ const App: React.FC = () => {
         {/* Task & Orders Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
           {/* Task Analytics */}
-          <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-16 shadow-2xl border border-white/20">
+          <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-8 md:p-16 shadow-2xl border border-white/20">
             <h3 className="font-black text-slate-900 text-4xl tracking-tighter mb-12">직원 업무 달성률</h3>
             <div className="space-y-16">
               <div className="group">
@@ -1344,7 +1345,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Pending Orders */}
-          <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-16 shadow-2xl border border-white/20 flex flex-col">
+          <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] p-8 md:p-16 shadow-2xl border border-white/20 flex flex-col">
             <div className="flex justify-between items-center mb-12">
               <h3 className="font-black text-slate-900 text-4xl tracking-tighter">발주 요청 현황</h3>
               <span className="bg-rose-50 text-rose-600 px-6 py-3 rounded-2xl text-sm font-black shadow-sm">
@@ -1402,7 +1403,7 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
             <div className="lg:col-span-2 space-y-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="p-12 rounded-[3.5rem] bg-white border border-black/5 shadow-2xl relative overflow-hidden group">
+                <div className="p-8 md:p-12 rounded-[3.5rem] bg-white border border-black/5 shadow-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full -mr-24 -mt-24 group-hover:scale-150 transition-transform duration-700"></div>
                   <div className="flex justify-between items-start relative z-10">
                     <div className="min-w-0">
@@ -1415,7 +1416,7 @@ const App: React.FC = () => {
                     <button onClick={() => setIsFixedExpenseModalOpen(true)} className="bg-slate-900 hover:bg-black px-6 py-3 rounded-2xl text-white font-black text-sm transition-colors shrink-0 ml-4">수정</button>
                   </div>
                 </div>
-                <div className="p-12 rounded-[3.5rem] bg-white border border-black/5 shadow-sm flex flex-col justify-center relative overflow-hidden group">
+                <div className="p-8 md:p-12 rounded-[3.5rem] bg-white border border-black/5 shadow-sm flex flex-col justify-center relative overflow-hidden group">
                   <div className="absolute bottom-0 right-0 w-48 h-48 bg-slate-50 rounded-full -mr-24 -mb-24 group-hover:scale-150 transition-transform duration-700"></div>
                   <div className="relative z-10">
                     <span className="text-xs font-black text-slate-900 uppercase block mb-4 tracking-widest">등록된 직원</span>
@@ -1431,7 +1432,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <button onClick={() => setIsVendorModalOpen(true)} className="p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group">
+                <button onClick={() => setIsVendorModalOpen(true)} className="p-8 md:p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-8">
                     <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
@@ -1444,7 +1445,7 @@ const App: React.FC = () => {
                   <svg className="w-8 h-8 text-slate-200 group-hover:text-slate-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
                 </button>
 
-                <button onClick={() => setIsTaskModalOpen(true)} className="p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group">
+                <button onClick={() => setIsTaskModalOpen(true)} className="p-8 md:p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-8">
                     <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-[2rem] flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all duration-500">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
@@ -1457,7 +1458,7 @@ const App: React.FC = () => {
                   <svg className="w-8 h-8 text-slate-200 group-hover:text-slate-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
                 </button>
 
-                <button onClick={() => setIsUserModalOpen(true)} className="p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group md:col-span-2">
+                <button onClick={() => setIsUserModalOpen(true)} className="p-8 md:p-12 rounded-[4rem] bg-white border border-black/5 shadow-sm hover:shadow-2xl transition-all flex items-center justify-between group md:col-span-2">
                   <div className="flex items-center gap-8">
                     <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-[2rem] flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all duration-500">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -1472,7 +1473,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-[4rem] p-16 text-slate-900 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="bg-white rounded-[4rem] p-8 md:p-16 text-slate-900 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-full h-full opacity-5 pointer-events-none">
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0 L 100 100 L 100 0 Z" fill="currentColor" /></svg>
               </div>
@@ -1500,7 +1501,7 @@ const App: React.FC = () => {
 
       {isSyncModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-2xl p-6">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl p-6 md:p-12">
             <div className="flex justify-between items-center mb-10"><div><h2 className="text-3xl font-black tracking-tighter">데이터 동기화 (Sync)</h2></div><button onClick={() => setIsSyncModalOpen(false)} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100"><h3 className="font-black mb-2">1. 데이터 내보내기</h3><p className="text-[11px] text-slate-500 mb-4">현재 데이터를 코드로 생성하여 복사합니다.</p><button onClick={generateSyncCode} className="w-full bg-slate-900 text-white py-4 rounded-2xl text-xs font-black">코드 생성 & 복사</button></div>
@@ -1512,7 +1513,7 @@ const App: React.FC = () => {
 
       {isFixedExpenseModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">고정 지출 설정</h2><button onClick={() => { setIsFixedExpenseModalOpen(false); setEditingFixedExpense(null); }} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <form onSubmit={(e) => { 
               e.preventDefault(); 
@@ -1562,7 +1563,7 @@ const App: React.FC = () => {
       
       {isStaffModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">인사 관리</h2><button onClick={() => setIsStaffModalOpen(false)} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <form onSubmit={(e) => { 
               e.preventDefault(); 
@@ -1598,7 +1599,7 @@ const App: React.FC = () => {
 
       {isVendorModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">거래처 관리</h2><button onClick={() => setIsVendorModalOpen(false)} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <form onSubmit={(e) => { 
               e.preventDefault(); 
@@ -1626,7 +1627,7 @@ const App: React.FC = () => {
 
       {isTaskModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-3xl font-black tracking-tighter">업무 타임라인 관리</h2>
               <div className="flex items-center gap-3">
@@ -1711,7 +1712,7 @@ const App: React.FC = () => {
 
       {isInventoryModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black tracking-tighter">재고 품목 관리</h2><button onClick={() => { setIsInventoryModalOpen(false); setEditingInventory(null); }} className="bg-slate-100 p-3 rounded-2xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <form onSubmit={(e) => { 
               e.preventDefault(); 
@@ -1755,7 +1756,7 @@ const App: React.FC = () => {
 
       {isUserModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-12">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg p-6 md:p-12">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-3xl font-black tracking-tighter">사용자 권한 관리</h2>
               <button onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="bg-slate-100 p-3 rounded-2xl">
@@ -1861,6 +1862,100 @@ const App: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-40 pb-safe">
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex flex-col items-center gap-1 text-indigo-600">
+          <Activity className="w-6 h-6" />
+          <span className="text-[10px] font-black">대시보드</span>
+        </button>
+        <button onClick={() => setAppMode('staff_select')} className="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 transition-colors">
+          <Users className="w-6 h-6" />
+          <span className="text-[10px] font-black">직원모드</span>
+        </button>
+        <button onClick={openNewModal} className="relative -top-6 bg-indigo-600 text-white p-4 rounded-full shadow-xl hover:scale-105 transition-transform">
+          <PlusCircle className="w-8 h-8" />
+        </button>
+        <button onClick={() => setIsSyncModalOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 transition-colors">
+          <Sparkles className="w-6 h-6" />
+          <span className="text-[10px] font-black">연동</span>
+        </button>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-900 transition-colors">
+          <Settings className="w-6 h-6" />
+          <span className="text-[10px] font-black">메뉴</span>
+        </button>
+      </div>
+
+      {/* Mobile Menu Modal */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-900/40 backdrop-blur-sm p-4 lg:hidden">
+          <div className="bg-white rounded-[2rem] p-6 space-y-4 animate-in slide-in-from-bottom-10">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-slate-900">전체 메뉴</h3>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-lg font-black text-indigo-600">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-black text-slate-800">{currentUser.name} 사장님</span>
+                <span className="text-[10px] font-bold text-slate-400">{currentUser.userId}</span>
+              </div>
+            </div>
+
+            <button onClick={() => { setIsMobileMenuOpen(false); setAppMode('staff_select'); }} className="w-full p-4 bg-slate-50 rounded-2xl flex items-center gap-4 font-black text-slate-700">
+              <Users className="w-5 h-5 text-indigo-500" /> 직원 모드로 전환
+            </button>
+            <button onClick={() => { setIsMobileMenuOpen(false); setIsSyncModalOpen(true); }} className="w-full p-4 bg-slate-50 rounded-2xl flex items-center gap-4 font-black text-slate-700">
+              <Sparkles className="w-5 h-5 text-emerald-500" /> 데이터 연동
+            </button>
+            <button onClick={() => {
+              setIsMobileMenuOpen(false);
+              if (!navigator.geolocation) {
+                alert('위치 정보를 사용할 수 없습니다.');
+                return;
+              }
+              navigator.geolocation.getCurrentPosition((position) => {
+                setStoreSettings({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  radius: 100
+                });
+                alert('현재 위치가 매장 위치로 설정되었습니다. (반경 100m)');
+              }, (error) => {
+                alert('위치 정보를 가져올 수 없습니다: ' + error.message);
+              });
+            }} className="w-full p-4 bg-slate-50 rounded-2xl flex items-center gap-4 font-black text-slate-700">
+              <Target className="w-5 h-5 text-blue-500" /> 매장 위치 설정
+            </button>
+            <button onClick={() => {
+              setIsMobileMenuOpen(false);
+              if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                setEntries([]);
+                setStaffList([]);
+                setVendorList([]);
+                setFixedExpenseItems([]);
+                setTasks([]);
+                setInventory([]);
+                setOrders([]);
+                setAttendanceList([]);
+                setStoreSettings(null);
+                localStorage.removeItem(`app_data_${currentUser.userId}`);
+                alert('데이터가 초기화되었습니다.');
+              }
+            }} className="w-full p-4 bg-rose-50 rounded-2xl flex items-center gap-4 font-black text-rose-600">
+              <Trash2 className="w-5 h-5" /> 데이터 초기화
+            </button>
+            <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="w-full p-4 bg-slate-900 rounded-2xl flex items-center justify-center gap-2 font-black text-white mt-4">
+              <LogOut className="w-5 h-5" /> 로그아웃
+            </button>
           </div>
         </div>
       )}
