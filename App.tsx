@@ -156,6 +156,7 @@ const App: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authForm, setAuthForm] = useState({ userId: '', password: '', name: '' });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authMessage, setAuthMessage] = useState({ type: '', text: '' });
 
@@ -351,15 +352,16 @@ const App: React.FC = () => {
             setFixedExpenseItems(INITIAL_FIXED_EXPENSES);
             setTasks(INITIAL_TASKS);
           }
+          setIsDataLoaded(true);
+          setDataLoadError(false);
         } catch (e) {
           console.error('Failed to load data from Firebase:', e);
-          alert('데이터를 불러오는 중 오류가 발생했습니다.');
-        } finally {
-          setIsDataLoaded(true);
+          setDataLoadError(true);
         }
       } else {
         setCurrentUser(null);
         setIsDataLoaded(false);
+        setDataLoadError(false);
       }
     });
 
@@ -498,6 +500,12 @@ const App: React.FC = () => {
         setVendorList(decoded.vendorList || INITIAL_VENDORS);
         setFixedExpenseItems(decoded.fixedExpenseItems || INITIAL_FIXED_EXPENSES);
         setIsSyncModalOpen(false);
+        forceSaveData({
+          entries: decoded.entries || [],
+          staffList: decoded.staffList || INITIAL_STAFF,
+          vendorList: decoded.vendorList || INITIAL_VENDORS,
+          fixedExpenseItems: decoded.fixedExpenseItems || INITIAL_FIXED_EXPENSES
+        });
         alert('동기화 완료!');
       }
     } catch (e) {
@@ -568,12 +576,23 @@ const App: React.FC = () => {
     };
   }, [entries, todayStr, thisMonthStr, currentDayOfMonth, monthlyLaborFixed, monthlyFixedCostOnly, daysInMonth]);
 
+  const forceSaveData = (overrides: Partial<any>) => {
+    if (!currentUser || !isDataLoaded) return;
+    const dataToSave = {
+      entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings,
+      ...overrides
+    };
+    setDoc(doc(db, 'stores', currentUser.id), dataToSave).catch(e => console.error('Immediate save failed:', e));
+  };
+
   const handleSaveEntry = (entryData: any) => {
     let finalVendorId = entryData.vendorId;
+    let updatedVendorList = [...vendorList];
     
     if (entryData.newVendorName) {
       const newVendor = { id: `v-${Date.now()}`, name: entryData.newVendorName };
-      setVendorList(prev => [...prev, newVendor]);
+      updatedVendorList.push(newVendor);
+      setVendorList(updatedVendorList);
       finalVendorId = newVendor.id;
     }
 
@@ -590,40 +609,42 @@ const App: React.FC = () => {
       products: entryData.products
     };
 
+    let updatedEntries = [...entries];
     if (entryData.id) {
-      setEntries(prev => prev.map(e => e.id === entryData.id ? newEntry : e));
+      updatedEntries = updatedEntries.map(e => e.id === entryData.id ? newEntry : e);
     } else {
-      setEntries(prev => [...prev, newEntry]);
-      
-      // 재고 자동 업데이트 (새로운 내역일 때만)
-      if (entryData.products && entryData.products.length > 0) {
-        setInventory(prevInventory => {
-          const updatedInventory = [...prevInventory];
-          entryData.products.forEach((p: any) => {
-            const existingItemIndex = updatedInventory.findIndex(i => i.name === p.name && i.vendorId === finalVendorId);
-            if (existingItemIndex >= 0) {
-              updatedInventory[existingItemIndex] = {
-                ...updatedInventory[existingItemIndex],
-                currentStock: Number(updatedInventory[existingItemIndex].currentStock) + Number(p.quantity),
-                pricePer10g: p.pricePer10g || updatedInventory[existingItemIndex].pricePer10g
-              };
-            } else {
-              updatedInventory.push({
-                id: `i-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                name: p.name,
-                vendorId: finalVendorId,
-                currentStock: Number(p.quantity),
-                minimumStock: 0,
-                unit: '개',
-                pricePer10g: p.pricePer10g
-              });
-            }
-          });
-          return updatedInventory;
-        });
-        alert(`${entryData.products.length}개의 품목이 재고에 자동 등록/업데이트 되었습니다.`);
-      }
+      updatedEntries.push(newEntry);
     }
+    setEntries(updatedEntries);
+
+    let updatedInventory = [...inventory];
+    if (!entryData.id && entryData.products && entryData.products.length > 0) {
+      entryData.products.forEach((p: any) => {
+        const existingItemIndex = updatedInventory.findIndex(i => i.name === p.name && i.vendorId === finalVendorId);
+        if (existingItemIndex >= 0) {
+          updatedInventory[existingItemIndex] = {
+            ...updatedInventory[existingItemIndex],
+            currentStock: Number(updatedInventory[existingItemIndex].currentStock) + Number(p.quantity),
+            pricePer10g: p.pricePer10g || updatedInventory[existingItemIndex].pricePer10g
+          };
+        } else {
+          updatedInventory.push({
+            id: `i-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            name: p.name,
+            vendorId: finalVendorId,
+            currentStock: Number(p.quantity),
+            minimumStock: 0,
+            unit: '개',
+            pricePer10g: p.pricePer10g
+          });
+        }
+      });
+      setInventory(updatedInventory);
+      alert(`${entryData.products.length}개의 품목이 재고에 자동 등록/업데이트 되었습니다.`);
+    }
+
+    // 모바일 환경 등에서 앱이 바로 종료될 경우를 대비해 즉시 저장
+    forceSaveData({ entries: updatedEntries, vendorList: updatedVendorList, inventory: updatedInventory });
   };
 
   const openEditModal = (entry: PLEntry) => {
@@ -638,7 +659,9 @@ const App: React.FC = () => {
 
   const handleDeleteEntry = (id: string) => {
     if (window.confirm('삭제하시겠습니까?')) {
-      setEntries(prev => prev.filter(e => e.id !== id));
+      const updatedEntries = entries.filter(e => e.id !== id);
+      setEntries(updatedEntries);
+      forceSaveData({ entries: updatedEntries });
     }
   };
 
@@ -809,7 +832,7 @@ const App: React.FC = () => {
                           <span className={`font-bold text-lg ${isCompleted ? 'text-indigo-400 line-through' : 'text-slate-700'}`}>{task.title}</span>
                         </div>
                         <button onClick={() => {
-                          setTasks(prev => prev.map(t => {
+                          const updatedTasks = tasks.map(t => {
                             if (t.id === task.id) {
                               const newCompletions = { ...t.completions };
                               if (isCompleted) delete newCompletions[todayStr];
@@ -817,7 +840,9 @@ const App: React.FC = () => {
                               return { ...t, completions: newCompletions };
                             }
                             return t;
-                          }));
+                          });
+                          setTasks(updatedTasks);
+                          forceSaveData({ tasks: updatedTasks });
                         }} className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${isCompleted ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-200' : 'border-slate-200 text-transparent hover:border-indigo-300'}`}>
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                         </button>
@@ -946,6 +971,31 @@ const App: React.FC = () => {
             <button onClick={() => setIsLoginMode(!isLoginMode)} className="text-slate-400 text-xs font-bold hover:text-white underline">{isLoginMode ? '새 계정 만들기' : '이미 계정이 있으신가요? 로그인'}</button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (currentUser && !isDataLoaded) {
+    if (dataLoadError) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+          <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 mb-2">데이터를 불러오지 못했습니다</h2>
+          <p className="text-slate-500 font-medium text-center mb-8">네트워크 상태를 확인해주세요.<br/>데이터 유실 방지를 위해 앱 사용이 일시적으로 제한됩니다.</p>
+          <button onClick={() => window.location.reload()} className="px-8 py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl font-black transition-colors shadow-lg shadow-indigo-500/30">
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+        <h2 className="text-2xl font-black text-slate-800 mb-2">데이터를 불러오는 중입니다...</h2>
+        <p className="text-slate-500 font-medium text-center">잠시만 기다려주세요.<br/>네트워크 상태에 따라 시간이 걸릴 수 있습니다.</p>
       </div>
     );
   }
