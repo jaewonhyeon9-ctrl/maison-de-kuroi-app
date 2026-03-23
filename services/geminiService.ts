@@ -6,9 +6,9 @@ let aiClient: GoogleGenAI | null = null;
 
 const getAI = () => {
   if (!aiClient) {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("API 키를 설정해주세요 (VITE_GEMINI_API_KEY).");
+      throw new Error("API 키를 설정해주세요 (GEMINI_API_KEY).");
     }
     aiClient = new GoogleGenAI({ apiKey });
   }

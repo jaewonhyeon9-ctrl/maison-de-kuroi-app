@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { PLEntry, Staff, Vendor, FixedExpenseItem, User, Task, InventoryItem, Order, OrderItem, Attendance, StoreSettings } from './types';
 import EntryModal from './components/EntryModal';
+import { ToastContainer, CustomConfirm } from './components/ToastContainer';
 import { analyzeFinancials } from './services/geminiService';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
@@ -198,6 +199,12 @@ const App: React.FC = () => {
 
   const [periodTab, setPeriodTab] = useState<'day' | 'month' | 'year'>('month');
 
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
+
+  const requestConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmDialog({ isOpen: true, message, onConfirm });
+  };
+
   useEffect(() => {
     const checkAuth = () => {
       const storedUser = localStorage.getItem('currentUser');
@@ -373,7 +380,7 @@ const App: React.FC = () => {
     if (currentUser && isDataLoaded) {
       const saveData = async () => {
         try {
-          const dataToSave = { entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings };
+          const dataToSave = JSON.parse(JSON.stringify({ entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings }));
           await setDoc(doc(db, 'stores', currentUser.id), dataToSave);
         } catch (e) {
           console.error('Failed to save data to Firebase:', e);
@@ -454,7 +461,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (window.confirm('로그아웃 하시겠습니까?')) {
+    requestConfirm('로그아웃 하시겠습니까?', async () => {
       try {
         await signOut(auth);
         setCurrentUser(null);
@@ -466,7 +473,7 @@ const App: React.FC = () => {
       } catch (error) {
         console.error('Logout error:', error);
       }
-    }
+    });
   };
 
   const generateSyncCode = () => {
@@ -494,7 +501,7 @@ const App: React.FC = () => {
       const jsonString = new TextDecoder().decode(utf8Bytes);
       const decoded = JSON.parse(jsonString);
       
-      if (window.confirm('현재 데이터가 모두 교체됩니다. 계속하시겠습니까?')) {
+      requestConfirm('현재 데이터가 모두 교체됩니다. 계속하시겠습니까?', () => {
         setEntries(decoded.entries || []);
         setStaffList(decoded.staffList || INITIAL_STAFF);
         setVendorList(decoded.vendorList || INITIAL_VENDORS);
@@ -507,7 +514,7 @@ const App: React.FC = () => {
           fixedExpenseItems: decoded.fixedExpenseItems || INITIAL_FIXED_EXPENSES
         });
         alert('동기화 완료!');
-      }
+      });
     } catch (e) {
       console.error('Sync code application failed:', e);
       alert('코드가 올바르지 않거나 손상되었습니다.');
@@ -578,10 +585,10 @@ const App: React.FC = () => {
 
   const forceSaveData = (overrides: Partial<any>) => {
     if (!currentUser || !isDataLoaded) return;
-    const dataToSave = {
+    const dataToSave = JSON.parse(JSON.stringify({
       entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings,
       ...overrides
-    };
+    }));
     setDoc(doc(db, 'stores', currentUser.id), dataToSave).catch(e => console.error('Immediate save failed:', e));
   };
 
@@ -658,11 +665,11 @@ const App: React.FC = () => {
   };
 
   const handleDeleteEntry = (id: string) => {
-    if (window.confirm('삭제하시겠습니까?')) {
+    requestConfirm('삭제하시겠습니까?', () => {
       const updatedEntries = entries.filter(e => e.id !== id);
       setEntries(updatedEntries);
       forceSaveData({ entries: updatedEntries });
-    }
+    });
   };
 
   if (currentUser && appMode === 'staff_select') {
@@ -1173,7 +1180,7 @@ const App: React.FC = () => {
                 데이터 연동
               </button>
               <button onClick={() => {
-                if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                requestConfirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.', () => {
                   setEntries([]);
                   setStaffList([]);
                   setVendorList([]);
@@ -1185,7 +1192,7 @@ const App: React.FC = () => {
                   setStoreSettings(null);
                   localStorage.removeItem(`app_data_${currentUser.userId}`);
                   alert('데이터가 초기화되었습니다.');
-                }
+                });
               }} className="px-5 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 text-xs font-black flex items-center gap-2 hover:bg-rose-100 transition-colors shadow-sm">
                 <Trash2 className="w-4 h-4" />
                 데이터 초기화
@@ -1420,9 +1427,9 @@ const App: React.FC = () => {
                         입고 완료 처리
                       </button>
                       <button onClick={() => {
-                        if (window.confirm('이 발주 요청을 삭제하시겠습니까?')) {
+                        requestConfirm('이 발주 요청을 삭제하시겠습니까?', () => {
                           setOrders(prev => prev.filter(o => o.id !== order.id));
-                        }
+                        });
                       }} className="px-6 bg-rose-50 text-rose-500 rounded-2xl text-sm font-black hover:bg-rose-100 transition-all">
                         삭제
                       </button>
@@ -1680,7 +1687,7 @@ const App: React.FC = () => {
               <h2 className="text-2xl md:text-3xl font-black tracking-tighter">업무 타임라인 관리</h2>
               <div className="flex items-center gap-3">
                 <button onClick={() => {
-                  if (window.confirm('기본 오전 체크리스트를 불러오시겠습니까? 기존 항목 뒤에 추가됩니다.')) {
+                  requestConfirm('기본 오전 체크리스트를 불러오시겠습니까? 기존 항목 뒤에 추가됩니다.', () => {
                     setTasks(prev => {
                       const existingTitles = new Set(prev.map(t => t.title));
                       const newTasks = INITIAL_TASKS.filter(t => !existingTitles.has(t.title)).map(t => ({
@@ -1689,7 +1696,7 @@ const App: React.FC = () => {
                       }));
                       return [...prev, ...newTasks];
                     });
-                  }
+                  });
                 }} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs md:text-sm font-black hover:bg-indigo-100 transition-colors">
                   기본 체크리스트 불러오기
                 </button>
@@ -1900,11 +1907,11 @@ const App: React.FC = () => {
                   <div className="flex gap-2">
                     <button onClick={() => setEditingUser(u)} className="text-indigo-400 text-[10px] font-black uppercase">수정</button>
                     <button onClick={async () => {
-                      if (window.confirm('정말 삭제하시겠습니까?')) {
+                      requestConfirm('정말 삭제하시겠습니까?', async () => {
                         const updatedUsers = users.filter(user => user.id !== u.id);
                         setUsers(updatedUsers);
                         localStorage.setItem('app_users', JSON.stringify({ list: updatedUsers }));
-                      }
+                      });
                     }} className="text-rose-400 text-[10px] font-black uppercase">삭제</button>
                   </div>
                 </div>
@@ -1985,7 +1992,7 @@ const App: React.FC = () => {
             </button>
             <button onClick={() => {
               setIsMobileMenuOpen(false);
-              if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+              requestConfirm('정말 모든 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.', () => {
                 setEntries([]);
                 setStaffList([]);
                 setVendorList([]);
@@ -1997,7 +2004,7 @@ const App: React.FC = () => {
                 setStoreSettings(null);
                 localStorage.removeItem(`app_data_${currentUser.userId}`);
                 alert('데이터가 초기화되었습니다.');
-              }
+              });
             }} className="w-full p-4 bg-rose-50 rounded-2xl flex items-center gap-4 font-black text-rose-600">
               <Trash2 className="w-5 h-5" /> 데이터 초기화
             </button>
@@ -2007,6 +2014,16 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+      <ToastContainer />
+      <CustomConfirm 
+        isOpen={confirmDialog?.isOpen || false}
+        message={confirmDialog?.message || ''}
+        onConfirm={() => {
+          confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 };

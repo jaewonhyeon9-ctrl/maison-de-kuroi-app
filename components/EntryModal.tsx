@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { EntryType, PLEntry, CategoryType, Staff, Vendor, FixedExpenseItem, ReceiptProduct } from '../types';
 import { analyzeReceipt } from '../services/geminiService';
+import { CustomConfirm } from './ToastContainer';
 
 interface EntryModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const CATEGORIES: CategoryType[] = ['식자재', '인건비', '월세', '관리�
 
 const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave, onDelete, staffList, vendorList, fixedExpenseItems, initialData, selectedDateStr }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   
@@ -393,10 +395,14 @@ const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave, onDele
               <button 
                 type="button" 
                 onClick={() => {
-                  if (window.confirm('이 기록을 삭제하시겠습니까?')) {
-                    onDelete(initialData.id);
-                    onClose();
-                  }
+                  setConfirmDialog({
+                    isOpen: true,
+                    message: '이 기록을 삭제하시겠습니까?',
+                    onConfirm: () => {
+                      onDelete(initialData.id);
+                      onClose();
+                    }
+                  });
                 }}
                 className="px-6 bg-rose-50 text-rose-600 rounded-2xl font-black text-sm hover:bg-rose-100 transition-all"
               >
@@ -409,6 +415,15 @@ const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave, onDele
           </div>
         </form>
       </div>
+      <CustomConfirm 
+        isOpen={confirmDialog?.isOpen || false}
+        message={confirmDialog?.message || ''}
+        onConfirm={() => {
+          confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 };
