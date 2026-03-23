@@ -378,9 +378,7 @@ const App: React.FC = () => {
         }
       };
       
-      // 디바운싱을 적용하여 너무 잦은 쓰기 방지
-      const timeoutId = setTimeout(saveData, 1000);
-      return () => clearTimeout(timeoutId);
+      saveData();
     }
   }, [entries, staffList, vendorList, fixedExpenseItems, tasks, inventory, orders, attendanceList, storeSettings, currentUser, isDataLoaded]);
 
